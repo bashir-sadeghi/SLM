@@ -18,12 +18,11 @@ module purge
 module load Conda/3
 conda activate frib
 
-cd /mnt/research/SDAQ/sadeghib/SAEFit_DOE
+cd /mnt/research/SDAQ/sadeghib/SLM
 
-echo python main.py --args exps/two_tails.ini --manual-seed=1
+echo python main.py --args exps/slm.ini 
 
 date
 
-srun python main.py --args exps/two_tails.ini --manual-seed=1
-
+srun python main.py --args exps/slm.ini
 date

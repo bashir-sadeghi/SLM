@@ -37,15 +37,25 @@ class DataPrepare(torch.utils.data.Dataset):
             val_text   = "\n".join(raw["validation"]["text"])
             test_text  = "\n".join(raw["test"]["text"])
 
+            '''
             # Tokenize: each word is a token
             train_tokens = train_text.strip().split()
             val_tokens   = val_text.strip().split()
             test_tokens  = test_text.strip().split()
+            '''
+
+            # Tokenize: each **character** is a token
+            train_tokens = list(train_text)
+            val_tokens   = list(val_text)
+            test_tokens  = list(test_text)
+
 
             # --- build vocab from TRAIN tokens only ---
             counter = Counter(train_tokens)
             # simple: keep all distinct tokens
             vocab_tokens = list(counter.keys())
+            print(f"Vocab size (train set): {len(vocab_tokens)}")
+            # exit
 
             # make sure <unk> exists
             if "<unk>" not in vocab_tokens:

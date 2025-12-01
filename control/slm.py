@@ -30,6 +30,7 @@ import numpy as np
 
 import pdb
 from lab.datasets.wikitext2 import DataPrepare
+from lab.datasets.gpt2 import DataPrepare2
 
 
 __all__ = ['RNN_SLM']
@@ -82,17 +83,25 @@ class RNN_SLM(pl.LightningModule):
         x, y = batch                      # [B, T]
         y_hat, _ = self.model(x)         # [B, T, V]
         # pdb.set_trace()
-        loss_c = self.criterion['train_lossc'](y_hat, y)
-        # self.criterion['train_lossc'].update(loss_c)
+        # print(f"x shape: {x.shape}, y shape: {y.shape}, y_hat shape: {y_hat.shape}")
+        loss = self.criterion['train_lossc'](y_hat, y)
+
         self.acc_trn.update(y_hat, y)
 
         opt = self.optimizers()
         opt.zero_grad()
-        self.manual_backward(loss_c)
+        self.manual_backward(loss)
+
+        if self.opts.gradient_clip > 0.0:
+            self.clip_gradients(
+            opt,
+            gradient_clip_val=self.opts.gradient_clip,
+            gradient_clip_algorithm="norm",
+            )
+
         opt.step()
 
-        return loss_c
-
+        return loss
 
     def on_train_epoch_end(self):
         # Step scheduler (manual opt)
@@ -100,10 +109,10 @@ class RNN_SLM(pl.LightningModule):
         if sch is not None:
             sch.step()
 
-        loss_c = self.criterion['train_lossc'].compute()
+        loss = self.criterion['train_lossc'].compute()
         acc = self.acc_trn.compute() * 100
 
-        self.log('train_loss_c', loss_c, on_epoch=True, prog_bar=False)
+        self.log('train_loss', loss, on_epoch=True, prog_bar=False)
         self.log('train_acc', acc, on_epoch=True, prog_bar=False)
 
         self.criterion['train_lossc'].reset()
@@ -112,10 +121,9 @@ class RNN_SLM(pl.LightningModule):
     ################################ Validation #######################################################################
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y_hat, _ = self.model(x)   # shape either [B, T, V] or [B, V, T]
+        y_hat, _ = self.model(x)   # [B, V, T] in your current model
 
-        loss_c = self.criterion['val_lossc'](y_hat, y)
-        # self.criterion['val_lossc'].update(loss_c)  # optional
+        loss = self.criterion['val_lossc'](y_hat, y)
         self.acc_val.update(y_hat, y)
 
         # Only log for first batch of each val epoch
@@ -126,17 +134,13 @@ class RNN_SLM(pl.LightningModule):
         ):
             print(">>> logging val_sample text")  # debug check
 
-            # Get vocab every time (in case it was created after __init__)
-            vocab = getattr(DataPrepare, "itos", None)
-
             with torch.no_grad():
-                # Figure out which dim is vocab (supports [B, T, V] or [B, V, T])
                 B = x.size(0)
-                if vocab is not None:
-                    V = len(vocab)
-                else:
-                    V = None
 
+                tok = DataPrepare2.tokenizer
+                V = tok.vocab_size if tok is not None else None
+
+                # detect [B, V, T] vs [B, T, V]
                 if y_hat.dim() == 3 and V is not None and y_hat.shape[1] == V:
                     # [B, V, T]
                     pred_ids_full = torch.argmax(y_hat, dim=1)  # [B, T]
@@ -145,15 +149,12 @@ class RNN_SLM(pl.LightningModule):
                     pred_ids_full = torch.argmax(y_hat, dim=-1)  # [B, T]
 
                 def decode(ids):
-                    if vocab is None:
-                        # fallback: just show ids
+                    tok = DataPrepare2.tokenizer
+                    if tok is None:
                         return " ".join(str(i) for i in ids)
-                    return " ".join(
-                        vocab[i] if 0 <= i < len(vocab) else "<unk>"
-                        for i in ids
-                    )
+                    return tok.decode(ids)
 
-                max_examples = min(4, B)
+                max_examples = min(3, B)
                 blocks = []
                 for i in range(max_examples):
                     inp_ids  = x[i].detach().cpu().tolist()
@@ -166,8 +167,8 @@ class RNN_SLM(pl.LightningModule):
 
                     blocks.append(
                         f"#### Example {i}\n"
-                        f"Input:  {input_text}\n"
-                        f"Target: {target_text}\n"
+                        f"Input:  {input_text}\n\n"
+                        f"Target: {target_text}\n\n"
                         f"Pred:   {pred_text}"
                     )
 
@@ -180,37 +181,36 @@ class RNN_SLM(pl.LightningModule):
                     global_step=self.current_epoch,
                 )
 
-        return loss_c
+        return loss
 
     def on_validation_epoch_end(self):
-        loss_c = self.criterion['val_lossc'].compute()
+        loss = self.criterion['val_lossc'].compute()
         acc = self.acc_val.compute() * 100
 
-        self.log('val_loss_c', loss_c, on_epoch=True, prog_bar=False)
         self.log('val_acc', acc, on_epoch=True, prog_bar=True)
 
         self.criterion['val_lossc'].reset()
         self.acc_val.reset()
 
         # If you want a generic "val_loss" key as well:
-        self.log('val_loss', loss_c, on_epoch=True, prog_bar=False)
+        self.log('val_loss', loss, on_epoch=True, prog_bar=False)
 
     ################################ Testing ##########################################################################
     def test_step(self, batch, batch_idx):
         x, y = batch                         # [B, T]
         y_hat, _ = self.model(x)             # [B, T, V]
 
-        loss_c = self.criterion['test_lossc'](y_hat, y)
-        # self.criterion['test_lossc'].update(loss_c)
+        loss = self.criterion['test_lossc'](y_hat, y)
+
         self.acc_test.update(y_hat, y)
 
-        return loss_c
+        return loss
 
     def on_test_epoch_end(self):
-        loss_c = self.criterion['test_lossc'].compute()
+        loss = self.criterion['test_lossc'].compute()
         acc = self.acc_test.compute() * 100
 
-        self.log('test_loss_c', loss_c, on_epoch=True, prog_bar=False)
+        self.log('test_loss', loss, on_epoch=True, prog_bar=False)
         self.log('test_acc', acc, on_epoch=True, prog_bar=False)
 
         self.criterion['test_lossc'].reset()

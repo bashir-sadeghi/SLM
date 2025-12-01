@@ -109,6 +109,7 @@ def parse_args():
     parser.add_argument('--r', type=int, default=None, help='number of embedding dimensions')
     parser.add_argument('--nunits', type=int, default=None, help='number of units in hidden layers')
     parser.add_argument('--dropout', type=float, default=None, help='dropout parameter')
+    parser.add_argument('--gradient_clip', type=float, default=None, help='gradient clipping value')
     parser.add_argument('--length-scale', type=float, default=None, help='length scale')
     parser.add_argument('--precision', type=int, default=32, help='model precision')
 
