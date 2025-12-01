@@ -121,6 +121,6 @@ result.ods
 # OS Files
 .DS_Store
 
-pytorch_to_cpp/inference
+
 
 
