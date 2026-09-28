@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 
 from datasets import load_dataset
 from transformers import AutoTokenizer
+import pdb
 
 import torch
 
@@ -18,17 +19,21 @@ class DataPrepare2(torch.utils.data.Dataset):
     tokenizer = None
 
     def __init__(self, data_dir, ratio_train, ratio_test, seed, vocab_size, block_size, train, val):
+
+        # Prepare everything only once (first time __init__ is called)
         if not DataPrepare2._prepared:
-            raw = load_dataset("wikitext", "wikitext-2-v1")
+            raw = load_dataset("wikitext", "wikitext-2-raw-v1")
+            # raw = load_dataset("wikitext", "wikitext-2-v1")
 
 
             if DataPrepare2.tokenizer is None:
                 # 1) base tokenizer (just for pre-tokenization rules)
                 base_tok = AutoTokenizer.from_pretrained("gpt2")
 
-                # 2) iterator over all WikiText lines
+                # 2) iterator over all or train WikiText lines
                 def text_iterator():
-                    for split in ["train", "validation", "test"]:
+                    # for split in ["train", "validation", "test"]:
+                    for split in ["train"]:
                         for txt in raw[split]["text"]:
                             if txt and len(txt.strip()) > 0:
                                 yield txt
@@ -64,13 +69,14 @@ class DataPrepare2(torch.utils.data.Dataset):
             vocab = tok.get_vocab()          # token -> id
             DataPrepare2.stoi = vocab
             print(f"GPT2 vocab size: {len(vocab)}")
+            # pdb.set_trace()
             # exit
             # DataPrepare2.itos = {i: t for t, i in vocab.items()}
 
             def make_xy(id_list):
                 ids = torch.tensor(id_list, dtype=torch.long)
                 total_len = ids.size(0)
-                usable_len = (total_len - 1) // block_size * block_size
+                usable_len = ((total_len - 1) // block_size) * block_size
                 ids = ids[:usable_len + 1]
                 xs, ys = [], []
                 for start in range(0, usable_len, block_size):
