@@ -1,5 +1,5 @@
 
-# RNN Language Model on WikiText-2
+# LSTM nad Transformer Language Model on WikiText-2
 
 This project trains a tiny recurrent language model (LSTM) on the WikiText-2 dataset using PyTorch Lightning and a custom BPE tokenizer (trained from GPT-2’s tokenizer).
 

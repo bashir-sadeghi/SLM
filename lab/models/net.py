@@ -8,9 +8,9 @@ import torch
 import pdb
 # import control.sean.utils as ut
 
-__all__ = ['RNN_SLM', 'Transformer_SLM']
+__all__ = ['LSTM_SLM', 'Transformer_SLM']
 
-class RNN_SLM(nn.Module):
+class LSTM_SLM(nn.Module):
     """
     Simple RNN-based small language model.
 
@@ -22,7 +22,7 @@ class RNN_SLM(nn.Module):
     """
 
     def __init__(self, vocab_size, embed_dim=128, hidden_dim=256, num_layers=1, dropout=0.0):
-        super(RNN_SLM, self).__init__()
+        super().__init__()
 
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
@@ -69,7 +69,7 @@ class RNN_SLM(nn.Module):
 class Transformer_SLM(nn.Module):
 
     def __init__(self, vocab_size, embed_dim=128, max_seq_len=256, attention_dim=128):
-        super(Transformer_SLM, self).__init__()
+        super().__init__()
 
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
