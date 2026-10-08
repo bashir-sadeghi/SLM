@@ -33,10 +33,10 @@ from lab.datasets.wikitext2 import DataPrepare
 from lab.datasets.gpt2 import DataPrepare2
 
 
-__all__ = ['RNN_SLM']
+__all__ = ['SLM']
 
 
-class RNN_SLM(pl.LightningModule):
+class SLM(pl.LightningModule):
     def __init__(self, opts, dataloader):
         super().__init__()
 
@@ -62,7 +62,7 @@ class RNN_SLM(pl.LightningModule):
         #################################################################################
         #                                  Models                                       #
         #################################################################################
-        # opts.model_type should be something like "RNN_SLM" from lab.models
+        # opts.model_type should be something like "SLM" from lab.models
         self.model = getattr(models, opts.model_type)(**opts.model_options)
 
         #################################################################################

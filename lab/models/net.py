@@ -118,20 +118,18 @@ class Transformer_SLM(nn.Module):
         v = z @ self.w_v
 
         # [B, T ,T]
-        scores = q @ k.transpose(2, 1)
+        scores = (q @ k.transpose(1, 2)) / (self.attention_dim ** 0.5) # [B, T, T]
 
         # defining the causal mask
-        future = torch.triu(
-            torch.ones((T, T), dtype=torch.bool, device=scores.device),
-            diagonal=1,
-        )
+        rows = torch.arange(T, device=q.device).reshape(1, T, 1)
+        cols = torch.arange(T, device=q.device).reshape(1, 1, T)
 
-        masked_scores = (scores / (self.attention_dim ** 0.5)).masked_fill(
-            future, float("-inf")
-        )
+        mask = rows >= cols                           # [1, T, T]
+
+        masked_scores = scores.masked_fill(~mask, float("-inf"))
+
 
         a = torch.softmax(masked_scores, dim=-1)
-        # pdb.set_trace()
 
         # [B, T, P] @ [P, E] -> [B, T, E]
         out_att = (a @ v) @ self.w_o
